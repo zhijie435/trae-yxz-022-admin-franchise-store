@@ -30,6 +30,14 @@ export function addStore(data) {
   })
 }
 
+export function updateStore(id, data) {
+  return request({
+    url: `/stores/${id}`,
+    method: 'put',
+    data
+  })
+}
+
 export function deleteStore(id) {
   return request({
     url: `/stores/${id}`,
@@ -42,5 +50,13 @@ export function toggleStoreStatus(id, status) {
     url: `/stores/${id}/status`,
     method: 'put',
     data: { status }
+  })
+}
+
+export function resetPassword(id, newPassword) {
+  return request({
+    url: `/stores/${id}/reset-password`,
+    method: 'put',
+    data: { newPassword }
   })
 }

@@ -108,8 +108,8 @@
             <span class="mono-text">{{ row.storeNo }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="storeName" label="门店名称" min-width="180" show-overflow-tooltip />
-        <el-table-column label="城市合伙人" width="180" align="center">
+        <el-table-column prop="storeName" label="门店名称" min-width="160" show-overflow-tooltip />
+        <el-table-column label="城市合伙人" width="170" align="center">
           <template #default="{ row }">
             <div class="partner-cell">
               <el-avatar :size="28" class="partner-avatar">{{ row.partnerName.charAt(0) }}</el-avatar>
@@ -120,19 +120,19 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="所在城市" width="140" align="center">
+        <el-table-column label="所在城市" width="130" align="center">
           <template #default="{ row }">
             {{ row.city }} {{ row.district }}
           </template>
         </el-table-column>
-        <el-table-column prop="storeArea" label="面积" width="90" align="center" />
-        <el-table-column prop="account" label="登录账号" width="160" align="center">
+        <el-table-column prop="storeArea" label="面积" width="80" align="center" />
+        <el-table-column prop="account" label="登录账号" width="150" align="center">
           <template #default="{ row }">
             <span class="mono-text account-text">{{ row.account }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="openDate" label="开业时间" width="120" align="center" />
-        <el-table-column label="账号状态" width="110" align="center">
+        <el-table-column prop="openDate" label="开业时间" width="110" align="center" />
+        <el-table-column label="账号状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.status"
@@ -144,11 +144,19 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" align="center" fixed="right">
+        <el-table-column label="操作" width="240" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleView(row)">
               <el-icon><View /></el-icon>
               详情
+            </el-button>
+            <el-button type="warning" link @click="handleEdit(row)">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
+            <el-button type="info" link @click="handleResetPwd(row)">
+              <el-icon><Key /></el-icon>
+              重置密码
             </el-button>
             <el-button type="danger" link @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>
@@ -174,18 +182,23 @@
 
     <el-dialog
       v-model="formVisible"
-      title="添加城市合伙人门店"
+      :title="editingId ? '编辑门店信息' : '添加城市合伙人门店'"
       width="720px"
       :close-on-click-modal="false"
     >
       <el-form :model="storeForm" :rules="formRules" ref="storeFormRef" label-width="100px" class="add-store-form">
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="8">
+            <el-form-item label="门店编号" prop="storeNo">
+              <el-input v-model="storeForm.storeNo" placeholder="如 MD2026010001" :disabled="!editingId" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="门店名称" prop="storeName">
               <el-input v-model="storeForm.storeName" placeholder="请输入门店名称" maxlength="50" show-word-limit />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="登录账号" prop="account">
               <el-input v-model="storeForm.account" placeholder="英文、数字、下划线组合" />
             </el-form-item>
@@ -247,7 +260,9 @@
       </el-form>
       <template #footer>
         <el-button @click="formVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitting" @click="handleSubmitAdd">确认添加</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmitForm">
+          {{ editingId ? '保存修改' : '确认添加' }}
+        </el-button>
       </template>
     </el-dialog>
 
@@ -279,6 +294,50 @@
         </el-descriptions>
       </div>
     </el-dialog>
+
+    <el-dialog
+      v-model="resetPwdVisible"
+      title="重置登录密码"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <div v-if="resetPwdTarget" class="reset-pwd-info">
+        <el-descriptions :column="1" border size="small">
+          <el-descriptions-item label="门店名称">{{ resetPwdTarget.storeName }}</el-descriptions-item>
+          <el-descriptions-item label="门店编号">
+            <span class="mono-text">{{ resetPwdTarget.storeNo }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="登录账号">
+            <span class="mono-text account-text">{{ resetPwdTarget.account }}</span>
+          </el-descriptions-item>
+          <el-descriptions-item label="合伙人">{{ resetPwdTarget.partnerName }}</el-descriptions-item>
+        </el-descriptions>
+      </div>
+      <el-form :model="resetPwdForm" :rules="resetPwdRules" ref="resetPwdFormRef" label-width="100px" class="reset-pwd-form">
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="resetPwdForm.newPassword"
+            type="password"
+            placeholder="请输入新密码（至少6位）"
+            show-password
+            maxlength="20"
+          />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input
+            v-model="resetPwdForm.confirmPassword"
+            type="password"
+            placeholder="请再次输入新密码"
+            show-password
+            maxlength="20"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetPwdVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="handleSubmitResetPwd">确认重置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -289,9 +348,11 @@ import {
   getStores,
   getStoreStatistics,
   addStore,
+  updateStore,
   deleteStore,
   toggleStoreStatus,
-  getStoreDetail
+  getStoreDetail,
+  resetPassword
 } from '../api/store.js';
 
 const loading = ref(false);
@@ -317,8 +378,10 @@ const pagination = reactive({
 });
 
 const formVisible = ref(false);
+const editingId = ref(null);
 const storeFormRef = ref(null);
 const storeForm = reactive({
+  storeNo: '',
   storeName: '',
   account: '',
   partnerName: '',
@@ -333,6 +396,7 @@ const storeForm = reactive({
 });
 
 const formRules = {
+  storeNo: [{ required: true, message: '请输入门店编号', trigger: 'blur' }],
   storeName: [{ required: true, message: '请输入门店名称', trigger: 'blur' }],
   account: [
     { required: true, message: '请输入登录账号', trigger: 'blur' },
@@ -350,6 +414,33 @@ const formRules = {
 
 const detailVisible = ref(false);
 const currentDetail = ref(null);
+
+const resetPwdVisible = ref(false);
+const resetPwdTarget = ref(null);
+const resetPwdFormRef = ref(null);
+const resetPwdForm = reactive({
+  newPassword: '',
+  confirmPassword: ''
+});
+
+const validateConfirmPwd = (rule, value, callback) => {
+  if (value !== resetPwdForm.newPassword) {
+    callback(new Error('两次输入的密码不一致'));
+  } else {
+    callback();
+  }
+};
+
+const resetPwdRules = {
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, max: 20, message: '密码长度为6-20位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    { validator: validateConfirmPwd, trigger: 'blur' }
+  ]
+};
 
 const loadStatistics = async () => {
   try {
@@ -402,7 +493,9 @@ const handleCurrentChange = (page) => {
 };
 
 const handleAdd = () => {
+  editingId.value = null;
   Object.assign(storeForm, {
+    storeNo: '',
     storeName: '',
     account: '',
     partnerName: '',
@@ -418,7 +511,26 @@ const handleAdd = () => {
   formVisible.value = true;
 };
 
-const handleSubmitAdd = async () => {
+const handleEdit = (row) => {
+  editingId.value = row.id;
+  Object.assign(storeForm, {
+    storeNo: row.storeNo,
+    storeName: row.storeName,
+    account: row.account,
+    partnerName: row.partnerName,
+    partnerPhone: row.partnerPhone,
+    companyName: row.companyName || '',
+    city: row.city,
+    district: row.district,
+    address: row.address,
+    storeArea: row.storeArea || '',
+    openDate: row.openDate || '',
+    remark: row.remark || ''
+  });
+  formVisible.value = true;
+};
+
+const handleSubmitForm = async () => {
   if (!storeFormRef.value) return;
   try {
     await storeFormRef.value.validate();
@@ -427,13 +539,19 @@ const handleSubmitAdd = async () => {
   }
   submitting.value = true;
   try {
-    await addStore({ ...storeForm });
-    ElMessage.success('门店添加成功');
+    if (editingId.value) {
+      await updateStore(editingId.value, { ...storeForm });
+      ElMessage.success('门店信息更新成功');
+    } else {
+      await addStore({ ...storeForm });
+      ElMessage.success('门店添加成功');
+    }
     formVisible.value = false;
+    editingId.value = null;
     loadList();
     loadStatistics();
   } catch (e) {
-    ElMessage.error(e.message || '添加失败');
+    ElMessage.error(e.message || (editingId.value ? '更新失败' : '添加失败'));
   } finally {
     submitting.value = false;
   }
@@ -504,6 +622,47 @@ const handleView = async (row) => {
     detailVisible.value = true;
   } catch (e) {
     ElMessage.error(e.message || '加载详情失败');
+  }
+};
+
+const handleResetPwd = (row) => {
+  resetPwdTarget.value = row;
+  resetPwdForm.newPassword = '';
+  resetPwdForm.confirmPassword = '';
+  resetPwdVisible.value = true;
+};
+
+const handleSubmitResetPwd = async () => {
+  if (!resetPwdFormRef.value) return;
+  try {
+    await resetPwdFormRef.value.validate();
+  } catch (e) {
+    return;
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要重置【${resetPwdTarget.value.storeName}】的登录密码吗？`,
+      '重置密码确认',
+      {
+        confirmButtonText: '确认重置',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+  } catch (e) {
+    return;
+  }
+
+  submitting.value = true;
+  try {
+    await resetPassword(resetPwdTarget.value.id, resetPwdForm.newPassword);
+    ElMessage.success('密码重置成功');
+    resetPwdVisible.value = false;
+  } catch (e) {
+    ElMessage.error(e.message || '密码重置失败');
+  } finally {
+    submitting.value = false;
   }
 };
 
@@ -669,6 +828,14 @@ onMounted(() => {
 
 .detail-content {
   padding: 4px 0;
+}
+
+.reset-pwd-info {
+  margin-bottom: 20px;
+}
+
+.reset-pwd-form {
+  padding: 4px 8px;
 }
 
 @media (max-width: 768px) {

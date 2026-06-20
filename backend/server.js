@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { getApplicationList, getApplicationById, auditApplication, getStatistics } = require('./src/franchiseService');
-const { getStoreList, getStoreById, getStoreStatistics, createStore, removeStore, updateStoreStatus } = require('./src/storeService');
+const { getStoreList, getStoreById, getStoreStatistics, createStore, removeStore, updateStoreStatus, updateStore, resetPassword } = require('./src/storeService');
 const { getLevelList, getLevelById, createLevel, updateLevel, updateLevelStatus, removeLevel, getLevelStatistics } = require('./src/levelService');
 const { getContractList, getContractById, createContract, updateContract, updateContractStatus, removeContract, getContractStatistics } = require('./src/contractService');
 const { getDepositList, getDepositById, createDeposit, payDeposit, refundDeposit, getDepositStatistics } = require('./src/depositService');
@@ -101,6 +101,25 @@ app.put('/api/stores/:id/status', (req, res) => {
     const { status } = req.body;
     const store = updateStoreStatus(id, status);
     res.json({ code: 200, message: '状态更新成功', data: store });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/stores/:id', (req, res) => {
+  try {
+    const store = updateStore(req.params.id, req.body);
+    res.json({ code: 200, message: '更新成功', data: store });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/stores/:id/reset-password', (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const result = resetPassword(req.params.id, newPassword);
+    res.json({ code: 200, message: '密码重置成功', data: result });
   } catch (error) {
     res.status(400).json({ code: 400, message: error.message, data: null });
   }

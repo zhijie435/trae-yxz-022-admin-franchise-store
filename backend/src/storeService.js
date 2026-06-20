@@ -220,11 +220,52 @@ const updateStoreStatus = (id, status) => {
   return formatStore(store);
 };
 
+const updateStore = (id, payload) => {
+  const store = stores.find(s => s.id === String(id));
+  if (!store) throw new Error('门店不存在');
+
+  if (payload.storeNo) {
+    const duplicate = stores.find(s => s.id !== String(id) && s.storeNo === payload.storeNo);
+    if (duplicate) throw new Error('门店编号已存在');
+  }
+
+  if (payload.account) {
+    const duplicate = stores.find(s => s.id !== String(id) && s.account === payload.account);
+    if (duplicate) throw new Error('账号已存在');
+  }
+
+  const allowedFields = [
+    'storeNo', 'storeName', 'partnerName', 'partnerPhone',
+    'companyName', 'city', 'district', 'address', 'storeArea',
+    'account', 'openDate', 'remark'
+  ];
+  allowedFields.forEach(field => {
+    if (payload[field] !== undefined) {
+      store[field] = payload[field];
+    }
+  });
+
+  return formatStore(store);
+};
+
+const resetPassword = (id, newPassword) => {
+  const store = stores.find(s => s.id === String(id));
+  if (!store) throw new Error('门店不存在');
+  if (!newPassword || newPassword.length < 6) {
+    throw new Error('密码长度不能少于6位');
+  }
+  store.password = newPassword;
+  store.passwordUpdateTime = formatNow();
+  return { success: true, account: store.account, passwordUpdateTime: store.passwordUpdateTime };
+};
+
 module.exports = {
   getStoreList,
   getStoreById,
   getStoreStatistics,
   createStore,
   removeStore,
-  updateStoreStatus
+  updateStoreStatus,
+  updateStore,
+  resetPassword
 };
