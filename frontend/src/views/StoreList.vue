@@ -132,6 +132,12 @@
           </template>
         </el-table-column>
         <el-table-column prop="openDate" label="开业时间" width="110" align="center" />
+        <el-table-column label="关联申请" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.applicationId" class="mono-text link-text">{{ row.applicationId }}</span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="账号状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
@@ -303,6 +309,47 @@
           <el-descriptions-item label="创建时间" :span="1">{{ currentDetail.createTime }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="1">{{ currentDetail.remark || '无' }}</el-descriptions-item>
         </el-descriptions>
+
+        <el-divider v-if="currentDetail.contracts && currentDetail.contracts.length > 0">关联合同</el-divider>
+        <div v-if="currentDetail.contracts && currentDetail.contracts.length > 0" class="related-section">
+          <el-table :data="currentDetail.contracts" size="small" border>
+            <el-table-column prop="contractNo" label="合同编号" width="150" align="center">
+              <template #default="{ row }"><span class="mono-text">{{ row.contractNo }}</span></template>
+            </el-table-column>
+            <el-table-column prop="levelName" label="加盟等级" width="120" align="center" />
+            <el-table-column label="合同期限" width="200" align="center">
+              <template #default="{ row }">{{ row.startDate }} ~ {{ row.endDate }}</template>
+            </el-table-column>
+            <el-table-column label="保证金" width="100" align="center">
+              <template #default="{ row }">¥{{ row.depositAmount?.toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="80" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'active' ? 'success' : row.status === 'pending' ? 'warning' : 'info'" effect="light" size="small">{{ row.statusText }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
+
+        <el-divider v-if="currentDetail.deposits && currentDetail.deposits.length > 0">关联保证金</el-divider>
+        <div v-if="currentDetail.deposits && currentDetail.deposits.length > 0" class="related-section">
+          <el-table :data="currentDetail.deposits" size="small" border>
+            <el-table-column prop="depositNo" label="编号" width="140" align="center">
+              <template #default="{ row }"><span class="mono-text">{{ row.depositNo }}</span></template>
+            </el-table-column>
+            <el-table-column label="应缴" width="100" align="center">
+              <template #default="{ row }">¥{{ row.amount?.toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column label="已缴" width="100" align="center">
+              <template #default="{ row }">¥{{ row.paidAmount?.toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="80" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'paid' ? 'success' : row.status === 'unpaid' ? 'info' : 'warning'" effect="light" size="small">{{ row.statusText }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
     </el-dialog>
 
@@ -834,6 +881,11 @@ onMounted(async () => {
   color: #3b82f6;
 }
 
+.link-text {
+  color: #3b82f6;
+  cursor: pointer;
+}
+
 .partner-cell {
   display: flex;
   align-items: center;
@@ -876,6 +928,10 @@ onMounted(async () => {
 
 .detail-content {
   padding: 4px 0;
+}
+
+.related-section {
+  margin-top: 8px;
 }
 
 .reset-pwd-info {

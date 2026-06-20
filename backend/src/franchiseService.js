@@ -1,5 +1,6 @@
 const { mockApplications } = require('./mockData');
 const { APPLICATION_STATUS, STATUS_MAP, STAGE_INFO, ONBOARDING_STAGES } = require('./constants');
+const { formatNow } = require('./utils');
 
 let applications = JSON.parse(JSON.stringify(mockApplications));
 
@@ -153,7 +154,16 @@ const advanceStage = (id, stageData) => {
   app.onboardingStage = currentStage + 1;
   app.stageStatus = app.onboardingStage === 6 ? 'completed' : 'in_progress';
 
-  return formatApplication(app);
+  const result = formatApplication(app);
+
+  if (app.onboardingStage === 6) {
+    result._triggerStoreCreate = true;
+    result._triggerContractCreate = true;
+    result._triggerDepositCreate = true;
+    result._triggerCityAssign = true;
+  }
+
+  return result;
 };
 
 const updateStageData = (id, stage, data) => {
@@ -207,15 +217,19 @@ const getStatistics = () => {
   };
 };
 
-const formatNow = () => {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+const getApplicationRaw = (id) => {
+  return applications.find(a => a.id === String(id));
+};
+
+const getAllApplicationsRaw = () => {
+  return applications;
 };
 
 module.exports = {
   getApplicationList,
   getApplicationById,
+  getApplicationRaw,
+  getAllApplicationsRaw,
   auditApplication,
   advanceStage,
   updateStageData,

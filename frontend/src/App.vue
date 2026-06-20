@@ -26,6 +26,14 @@
               <span>门店管理</span>
             </router-link>
             <router-link
+              to="/city-assignments"
+              class="nav-item"
+              :class="{ active: route.meta.activeMenu === 'city-assignments' }"
+            >
+              <el-icon><Location /></el-icon>
+              <span>城市归属</span>
+            </router-link>
+            <router-link
               to="/levels"
               class="nav-item"
               :class="{ active: route.meta.activeMenu === 'levels' }"
@@ -75,7 +83,7 @@
 
 <script setup>
 import { useRoute } from 'vue-router';
-import { OfficeBuilding, User, Document, Shop, Medal, Notebook, Wallet, Coin } from '@element-plus/icons-vue';
+import { OfficeBuilding, User, Document, Shop, Medal, Notebook, Wallet, Coin, Location } from '@element-plus/icons-vue';
 
 const route = useRoute();
 </script>

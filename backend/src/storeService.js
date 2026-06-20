@@ -1,5 +1,6 @@
 const { APPLICATION_STATUS } = require('./constants');
 const { mockApplications } = require('./mockData');
+const { formatNow, generateId, generateBusinessNo, paginateList } = require('./utils');
 
 const mockStores = [
   {
@@ -18,6 +19,7 @@ const mockStores = [
     openDate: '2026-03-15',
     status: 'enabled',
     createTime: '2026-02-20 10:00:00',
+    applicationId: '',
     remark: '北京地区核心旗舰店'
   },
   {
@@ -36,6 +38,7 @@ const mockStores = [
     openDate: '2026-04-01',
     status: 'enabled',
     createTime: '2026-03-10 14:30:00',
+    applicationId: '',
     remark: '华东地区旗舰体验店'
   },
   {
@@ -54,6 +57,7 @@ const mockStores = [
     openDate: '2026-05-10',
     status: 'enabled',
     createTime: '2026-04-15 09:20:00',
+    applicationId: '',
     remark: ''
   },
   {
@@ -72,6 +76,7 @@ const mockStores = [
     openDate: '2026-05-20',
     status: 'disabled',
     createTime: '2026-04-28 16:00:00',
+    applicationId: '',
     remark: '因违规操作被暂停账号'
   },
   {
@@ -90,6 +95,7 @@ const mockStores = [
     openDate: '2026-06-01',
     status: 'enabled',
     createTime: '2026-05-10 11:15:00',
+    applicationId: '',
     remark: ''
   }
 ];
@@ -106,14 +112,6 @@ const formatStore = (store) => ({
   ...store,
   statusText: (STATUS_MAP[store.status] || {}).label || '未知'
 });
-
-const pad4 = (n) => String(n).padStart(4, '0');
-
-const formatNow = () => {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
-};
 
 const getStoreList = ({ page = 1, pageSize = 10, status, keyword, province, city } = {}) => {
   let result = [...stores];
@@ -143,19 +141,11 @@ const getStoreList = ({ page = 1, pageSize = 10, status, keyword, province, city
 
   result.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
 
-  const total = result.length;
-  let list = result;
-  if (page && pageSize) {
-    const start = (page - 1) * pageSize;
-    list = result.slice(start, start + pageSize);
-  }
-
-  return {
-    list: list.map(formatStore),
-    total,
-    page: Number(page) || 1,
-    pageSize: Number(pageSize) || total
-  };
+  return paginateList({
+    list: result.map(formatStore),
+    page,
+    pageSize
+  });
 };
 
 const getStoreById = (id) => {
@@ -179,7 +169,8 @@ const getStoreStatistics = () => {
 const createStore = (payload) => {
   const {
     storeName, partnerName, partnerPhone, companyName,
-    province, city, district, address, storeArea, account, openDate, remark = ''
+    province, city, district, address, storeArea, account, openDate, remark = '',
+    applicationId = ''
   } = payload;
 
   if (!storeName || !partnerName || !partnerPhone || !province || !city || !district || !address || !account) {
@@ -190,10 +181,9 @@ const createStore = (payload) => {
     throw new Error('账号已存在，请更换账号');
   }
 
-  const newId = 'ST' + pad4(nextStoreCounter++);
+  const newId = generateId('ST', nextStoreCounter++);
   const now = formatNow();
-  const today = now.substring(0, 10).replace(/-/g, '');
-  const storeNo = 'MD' + today + pad4(nextStoreCounter - 1);
+  const storeNo = generateBusinessNo('MD', nextStoreCounter - 1);
 
   const store = {
     id: newId,
@@ -211,11 +201,45 @@ const createStore = (payload) => {
     openDate: openDate || now.substring(0, 10),
     status: 'enabled',
     createTime: now,
+    applicationId,
     remark
   };
 
   stores.unshift(store);
   return formatStore(store);
+};
+
+const createStoreFromApplication = (appData) => {
+  const accountData = appData.stageData?.account || {};
+  const contractData = appData.stageData?.contract || {};
+
+  if (!accountData.account || !accountData.storeNo) {
+    return null;
+  }
+
+  const existing = stores.find(s =>
+    s.account === accountData.account || s.storeNo === accountData.storeNo
+  );
+  if (existing) {
+    existing.applicationId = appData.id;
+    return formatStore(existing);
+  }
+
+  return createStore({
+    storeName: accountData.storeName || `${appData.city}门店`,
+    partnerName: appData.legalPerson,
+    partnerPhone: appData.phone,
+    companyName: appData.companyName,
+    province: appData.province,
+    city: appData.city,
+    district: appData.district,
+    address: appData.district || '',
+    storeArea: '',
+    account: accountData.account,
+    openDate: accountData.openDate || formatNow().substring(0, 10),
+    remark: `由申请 ${appData.applyNo} 自动创建`,
+    applicationId: appData.id
+  });
 };
 
 const removeStore = (id) => {
@@ -252,7 +276,7 @@ const updateStore = (id, payload) => {
   const allowedFields = [
     'storeNo', 'storeName', 'partnerName', 'partnerPhone',
     'companyName', 'province', 'city', 'district', 'address', 'storeArea',
-    'account', 'openDate', 'remark'
+    'account', 'openDate', 'remark', 'applicationId'
   ];
   allowedFields.forEach(field => {
     if (payload[field] !== undefined) {
@@ -274,14 +298,20 @@ const resetPassword = (id, newPassword) => {
   return { success: true, account: store.account, passwordUpdateTime: store.passwordUpdateTime };
 };
 
+const getStoresByCity = (city) => {
+  return stores.filter(s => s.city === city).map(formatStore);
+};
+
 module.exports = {
   getStoreList,
   getStoreById,
   getStoreByNo,
   getStoreStatistics,
   createStore,
+  createStoreFromApplication,
   removeStore,
   updateStoreStatus,
   updateStore,
-  resetPassword
+  resetPassword,
+  getStoresByCity
 };

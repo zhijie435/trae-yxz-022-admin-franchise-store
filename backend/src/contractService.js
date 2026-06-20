@@ -1,4 +1,5 @@
 const { getStoreByNo } = require('./storeService');
+const { formatNow, generateId, generateBusinessNo, paginateList } = require('./utils');
 
 const mockContracts = [
   {
@@ -16,6 +17,7 @@ const mockContracts = [
     signDate: '2026-03-01',
     depositAmount: 200000,
     serviceFeeRate: 3,
+    applicationId: '',
     remark: '三年期金牌合同',
     createTime: '2026-03-01 10:00:00'
   },
@@ -34,6 +36,7 @@ const mockContracts = [
     signDate: '2026-03-15',
     depositAmount: 100000,
     serviceFeeRate: 4,
+    applicationId: '',
     remark: '两年期银牌合同',
     createTime: '2026-03-15 14:30:00'
   },
@@ -52,6 +55,7 @@ const mockContracts = [
     signDate: '2026-04-28',
     depositAmount: 50000,
     serviceFeeRate: 5,
+    applicationId: '',
     remark: '',
     createTime: '2026-04-28 09:20:00'
   },
@@ -70,6 +74,7 @@ const mockContracts = [
     signDate: '2025-05-20',
     depositAmount: 50000,
     serviceFeeRate: 5,
+    applicationId: '',
     remark: '合同已到期，待续签',
     createTime: '2025-05-20 11:00:00'
   },
@@ -88,6 +93,7 @@ const mockContracts = [
     signDate: '',
     depositAmount: 100000,
     serviceFeeRate: 4,
+    applicationId: '',
     remark: '待签约确认',
     createTime: '2026-05-15 16:00:00'
   }
@@ -101,12 +107,6 @@ const CONTRACT_STATUS_MAP = {
   active: { label: '生效中', type: 'success' },
   expired: { label: '已到期', type: 'info' },
   terminated: { label: '已终止', type: 'danger' }
-};
-
-const formatNow = () => {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 };
 
 const formatContract = (ct) => ({
@@ -134,19 +134,11 @@ const getContractList = ({ page = 1, pageSize = 10, status, keyword } = {}) => {
 
   result.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
 
-  const total = result.length;
-  let list = result;
-  if (page && pageSize) {
-    const start = (page - 1) * pageSize;
-    list = result.slice(start, start + pageSize);
-  }
-
-  return {
-    list: list.map(formatContract),
-    total,
-    page: Number(page) || 1,
-    pageSize: Number(pageSize) || total
-  };
+  return paginateList({
+    list: result.map(formatContract),
+    page,
+    pageSize
+  });
 };
 
 const getContractById = (id) => {
@@ -154,8 +146,13 @@ const getContractById = (id) => {
   return ct ? formatContract(ct) : null;
 };
 
+const getContractByNo = (contractNo) => {
+  const ct = contracts.find(c => c.contractNo === String(contractNo));
+  return ct ? formatContract(ct) : null;
+};
+
 const createContract = (payload) => {
-  const { partnerName, partnerPhone, companyName, storeName, storeNo, levelName, startDate, endDate, depositAmount, serviceFeeRate, remark } = payload;
+  const { partnerName, partnerPhone, companyName, storeName, storeNo, levelName, startDate, endDate, depositAmount, serviceFeeRate, remark, applicationId } = payload;
 
   if (!partnerName || !storeName || !startDate || !endDate) {
     throw new Error('必填项不能为空');
@@ -168,10 +165,9 @@ const createContract = (payload) => {
     }
   }
 
-  const newId = 'CT' + String(nextContractCounter++).padStart(3, '0');
+  const newId = generateId('CT', nextContractCounter++);
   const now = formatNow();
-  const today = now.substring(0, 10).replace(/-/g, '');
-  const contractNo = 'HT' + today + String(nextContractCounter - 1).padStart(4, '0');
+  const contractNo = generateBusinessNo('HT', nextContractCounter - 1);
 
   const contract = {
     id: newId,
@@ -188,12 +184,46 @@ const createContract = (payload) => {
     signDate: '',
     depositAmount: depositAmount || 0,
     serviceFeeRate: serviceFeeRate || 0,
+    applicationId: applicationId || '',
     remark: remark || '',
     createTime: now
   };
 
   contracts.unshift(contract);
   return formatContract(contract);
+};
+
+const createContractFromApplication = (appData) => {
+  const contractStageData = appData.stageData?.contract || {};
+  const accountStageData = appData.stageData?.account || {};
+
+  const contractNo = contractStageData.contractNo;
+  if (contractNo) {
+    const existing = contracts.find(c => c.contractNo === contractNo);
+    if (existing) {
+      existing.applicationId = appData.id;
+      existing.status = 'active';
+      if (!existing.signDate) {
+        existing.signDate = formatNow().substring(0, 10);
+      }
+      return formatContract(existing);
+    }
+  }
+
+  return createContract({
+    partnerName: appData.legalPerson,
+    partnerPhone: appData.phone,
+    companyName: appData.companyName,
+    storeName: accountStageData.storeName || `${appData.city}门店`,
+    storeNo: accountStageData.storeNo || '',
+    levelName: contractStageData.contractType || '标准加盟商',
+    startDate: contractStageData.startDate || '',
+    endDate: contractStageData.endDate || '',
+    depositAmount: contractStageData.depositAmount || 0,
+    serviceFeeRate: contractStageData.serviceFeeRate || 0,
+    remark: `由申请 ${appData.applyNo} 自动创建`,
+    applicationId: appData.id
+  });
 };
 
 const updateContractStatus = (id, status) => {
@@ -206,7 +236,11 @@ const updateContractStatus = (id, status) => {
   if (status === 'active' && !contract.signDate) {
     contract.signDate = formatNow().substring(0, 10);
   }
-  return formatContract(contract);
+  const result = formatContract(contract);
+  if (status === 'active') {
+    result._triggerDepositCreate = true;
+  }
+  return result;
 };
 
 const updateContract = (id, payload) => {
@@ -232,12 +266,19 @@ const getContractStatistics = () => {
   return { total, pending, active, expired, terminated };
 };
 
+const getContractsByStoreNo = (storeNo) => {
+  return contracts.filter(c => c.storeNo === storeNo).map(formatContract);
+};
+
 module.exports = {
   getContractList,
   getContractById,
+  getContractByNo,
   createContract,
+  createContractFromApplication,
   updateContract,
   updateContractStatus,
   removeContract,
-  getContractStatistics
+  getContractStatistics,
+  getContractsByStoreNo
 };

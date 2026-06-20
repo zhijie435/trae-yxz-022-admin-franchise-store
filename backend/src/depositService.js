@@ -1,4 +1,5 @@
 const { getStoreByNo } = require('./storeService');
+const { formatNow, generateId, generateBusinessNo, paginateList } = require('./utils');
 
 const mockDeposits = [
   {
@@ -15,6 +16,7 @@ const mockDeposits = [
     paymentMethodText: '银行转账',
     status: 'paid',
     paymentDate: '2026-02-28',
+    applicationId: '',
     remark: '全额缴纳',
     createTime: '2026-02-28 10:00:00'
   },
@@ -32,6 +34,7 @@ const mockDeposits = [
     paymentMethodText: '银行转账',
     status: 'paid',
     paymentDate: '2026-03-10',
+    applicationId: '',
     remark: '',
     createTime: '2026-03-10 14:30:00'
   },
@@ -49,6 +52,7 @@ const mockDeposits = [
     paymentMethodText: '在线支付',
     status: 'partial',
     paymentDate: '2026-04-25',
+    applicationId: '',
     remark: '首期已缴纳，尾款30天内补齐',
     createTime: '2026-04-25 09:20:00'
   },
@@ -68,6 +72,7 @@ const mockDeposits = [
     paymentDate: '2025-05-18',
     refundDate: '2026-06-01',
     refundAmount: 50000,
+    applicationId: '',
     remark: '合同到期，保证金已退还',
     createTime: '2025-05-18 11:00:00'
   },
@@ -85,6 +90,7 @@ const mockDeposits = [
     paymentMethodText: '',
     status: 'unpaid',
     paymentDate: '',
+    applicationId: '',
     remark: '待签约后缴纳',
     createTime: '2026-05-15 16:00:00'
   }
@@ -100,10 +106,11 @@ const DEPOSIT_STATUS_MAP = {
   refunded: { label: '已退还', type: 'primary' }
 };
 
-const formatNow = () => {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+const PAYMENT_METHOD_MAP = {
+  bank_transfer: '银行转账',
+  online: '在线支付',
+  cash: '现金',
+  check: '支票'
 };
 
 const formatDeposit = (dp) => ({
@@ -130,19 +137,11 @@ const getDepositList = ({ page = 1, pageSize = 10, status, keyword } = {}) => {
 
   result.sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
 
-  const total = result.length;
-  let list = result;
-  if (page && pageSize) {
-    const start = (page - 1) * pageSize;
-    list = result.slice(start, start + pageSize);
-  }
-
-  return {
-    list: list.map(formatDeposit),
-    total,
-    page: Number(page) || 1,
-    pageSize: Number(pageSize) || total
-  };
+  return paginateList({
+    list: result.map(formatDeposit),
+    page,
+    pageSize
+  });
 };
 
 const getDepositById = (id) => {
@@ -151,7 +150,7 @@ const getDepositById = (id) => {
 };
 
 const createDeposit = (payload) => {
-  const { contractNo, partnerName, storeName, storeNo, levelName, amount, paymentMethod, paymentDate, remark } = payload;
+  const { contractNo, partnerName, storeName, storeNo, levelName, amount, paymentMethod, paymentDate, remark, applicationId } = payload;
 
   if (!contractNo || !partnerName || !storeName || !amount) {
     throw new Error('必填项不能为空');
@@ -164,17 +163,9 @@ const createDeposit = (payload) => {
     }
   }
 
-  const newId = 'DP' + String(nextDepositCounter++).padStart(3, '0');
+  const newId = generateId('DP', nextDepositCounter++);
   const now = formatNow();
-  const today = now.substring(0, 10).replace(/-/g, '');
-  const depositNo = 'BZ' + today + String(nextDepositCounter - 1).padStart(4, '0');
-
-  const paymentMethodMap = {
-    bank_transfer: '银行转账',
-    online: '在线支付',
-    cash: '现金',
-    check: '支票'
-  };
+  const depositNo = generateBusinessNo('BZ', nextDepositCounter - 1);
 
   const deposit = {
     id: newId,
@@ -187,15 +178,67 @@ const createDeposit = (payload) => {
     amount,
     paidAmount: 0,
     paymentMethod: paymentMethod || '',
-    paymentMethodText: paymentMethodMap[paymentMethod] || '',
+    paymentMethodText: PAYMENT_METHOD_MAP[paymentMethod] || '',
     status: 'unpaid',
     paymentDate: paymentDate || '',
+    applicationId: applicationId || '',
     remark: remark || '',
     createTime: now
   };
 
   deposits.unshift(deposit);
   return formatDeposit(deposit);
+};
+
+const createDepositFromContract = (contractData) => {
+  if (!contractData.depositAmount || contractData.depositAmount <= 0) {
+    return null;
+  }
+
+  const existing = deposits.find(d => d.contractNo === contractData.contractNo);
+  if (existing) {
+    return formatDeposit(existing);
+  }
+
+  return createDeposit({
+    contractNo: contractData.contractNo,
+    partnerName: contractData.partnerName,
+    storeName: contractData.storeName,
+    storeNo: contractData.storeNo || '',
+    levelName: contractData.levelName || '',
+    amount: contractData.depositAmount,
+    remark: `由合同 ${contractData.contractNo} 自动创建`,
+    applicationId: contractData.applicationId || ''
+  });
+};
+
+const createDepositFromApplication = (appData) => {
+  const contractStageData = appData.stageData?.contract || {};
+  const accountStageData = appData.stageData?.account || {};
+
+  if (!contractStageData.depositAmount || contractStageData.depositAmount <= 0) {
+    return null;
+  }
+
+  const contractNo = contractStageData.contractNo || '';
+  if (contractNo) {
+    const existing = deposits.find(d => d.contractNo === contractNo);
+    if (existing) {
+      existing.applicationId = appData.id;
+      return formatDeposit(existing);
+    }
+  }
+
+  return createDeposit({
+    contractNo: contractNo || `HT${appData.applyNo}`,
+    partnerName: appData.legalPerson,
+    storeName: accountStageData.storeName || `${appData.city}门店`,
+    storeNo: accountStageData.storeNo || '',
+    levelName: contractStageData.contractType || '标准加盟商',
+    amount: contractStageData.depositAmount,
+    remark: `由申请 ${appData.applyNo} 自动创建`,
+    applicationId: appData.id
+  });
 };
 
 const payDeposit = (id, payload) => {
@@ -205,16 +248,9 @@ const payDeposit = (id, payload) => {
   const { paidAmount, paymentMethod, paymentDate } = payload;
   if (!paidAmount || paidAmount <= 0) throw new Error('缴纳金额必须大于0');
 
-  const paymentMethodMap = {
-    bank_transfer: '银行转账',
-    online: '在线支付',
-    cash: '现金',
-    check: '支票'
-  };
-
   deposit.paidAmount = (deposit.paidAmount || 0) + Number(paidAmount);
   deposit.paymentMethod = paymentMethod || deposit.paymentMethod;
-  deposit.paymentMethodText = paymentMethodMap[paymentMethod] || deposit.paymentMethodText;
+  deposit.paymentMethodText = PAYMENT_METHOD_MAP[paymentMethod] || deposit.paymentMethodText;
   deposit.paymentDate = paymentDate || deposit.paymentDate;
 
   if (deposit.paidAmount >= deposit.amount) {
@@ -251,11 +287,18 @@ const getDepositStatistics = () => {
   return { total, unpaid, partial, paid, refunded, totalAmount, totalPaid };
 };
 
+const getDepositsByContractNo = (contractNo) => {
+  return deposits.filter(d => d.contractNo === contractNo).map(formatDeposit);
+};
+
 module.exports = {
   getDepositList,
   getDepositById,
   createDeposit,
+  createDepositFromContract,
+  createDepositFromApplication,
   payDeposit,
   refundDeposit,
-  getDepositStatistics
+  getDepositStatistics,
+  getDepositsByContractNo
 };

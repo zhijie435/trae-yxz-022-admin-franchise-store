@@ -21,7 +21,13 @@ const routes = [
     path: '/stores',
     name: 'StoreList',
     component: () => import('@/views/StoreList.vue'),
-    meta: { title: '门店列表', activeMenu: 'stores' }
+    meta: { title: '门店管理', activeMenu: 'stores' }
+  },
+  {
+    path: '/city-assignments',
+    name: 'CityAssign',
+    component: () => import('@/views/CityAssign.vue'),
+    meta: { title: '城市归属', activeMenu: 'city-assignments' }
   },
   {
     path: '/levels',

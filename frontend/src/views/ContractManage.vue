@@ -295,6 +295,27 @@
           <el-descriptions-item label="创建时间" :span="1">{{ currentDetail.createTime }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="1">{{ currentDetail.remark || '无' }}</el-descriptions-item>
         </el-descriptions>
+
+        <el-divider v-if="currentDetail.deposits && currentDetail.deposits.length > 0">关联保证金</el-divider>
+        <div v-if="currentDetail.deposits && currentDetail.deposits.length > 0" class="related-section">
+          <el-table :data="currentDetail.deposits" size="small" border>
+            <el-table-column prop="depositNo" label="编号" width="140" align="center">
+              <template #default="{ row }"><span class="mono-text">{{ row.depositNo }}</span></template>
+            </el-table-column>
+            <el-table-column label="应缴金额" width="110" align="center">
+              <template #default="{ row }">¥{{ row.amount?.toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column label="已缴金额" width="110" align="center">
+              <template #default="{ row }">¥{{ row.paidAmount?.toLocaleString() }}</template>
+            </el-table-column>
+            <el-table-column prop="paymentMethodText" label="缴纳方式" width="100" align="center" />
+            <el-table-column label="状态" width="80" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'paid' ? 'success' : row.status === 'unpaid' ? 'info' : row.status === 'partial' ? 'warning' : 'primary'" effect="light" size="small">{{ row.statusText }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
     </el-dialog>
   </div>
@@ -678,6 +699,10 @@ onMounted(() => {
 
 .detail-content {
   padding: 4px 0;
+}
+
+.related-section {
+  margin-top: 8px;
 }
 
 @media (max-width: 768px) {

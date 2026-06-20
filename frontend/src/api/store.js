@@ -1,19 +1,7 @@
 import request from '../utils/request'
+import { getProvinces, getCitiesByProvince } from './region.js'
 
-export function getProvinces() {
-  return request({
-    url: '/regions/provinces',
-    method: 'get'
-  })
-}
-
-export function getCitiesByProvince(province) {
-  return request({
-    url: '/regions/cities',
-    method: 'get',
-    params: { province }
-  })
-}
+export { getProvinces, getCitiesByProvince }
 
 export function getStores(params) {
   return request({
