@@ -1,13 +1,19 @@
 const { mockApplications } = require('./mockData');
-const { APPLICATION_STATUS, STATUS_MAP } = require('./constants');
+const { APPLICATION_STATUS, STATUS_MAP, STAGE_INFO, ONBOARDING_STAGES } = require('./constants');
 
 let applications = JSON.parse(JSON.stringify(mockApplications));
 
 const formatApplication = (app) => {
   const statusInfo = STATUS_MAP[app.status] || { label: '未知', type: 'info' };
+  const stageInfo = STAGE_INFO[app.onboardingStage] || { name: '未知', type: 'info' };
   return {
     ...app,
-    statusText: statusInfo.label
+    statusText: statusInfo.label,
+    statusType: statusInfo.type,
+    stageName: stageInfo.name,
+    stageCode: stageInfo.code,
+    stageColor: stageInfo.color,
+    stageType: stageInfo.type
   };
 };
 
@@ -18,6 +24,10 @@ const getApplicationList = (filters = {}) => {
     result = result.filter(app => app.status === filters.status);
   }
 
+  if (filters.stage) {
+    result = result.filter(app => String(app.onboardingStage) === String(filters.stage));
+  }
+
   if (filters.keyword) {
     const keyword = filters.keyword.toLowerCase();
     result = result.filter(app =>
@@ -26,6 +36,10 @@ const getApplicationList = (filters = {}) => {
       app.legalPerson.toLowerCase().includes(keyword) ||
       app.phone.includes(keyword)
     );
+  }
+
+  if (filters.city) {
+    result = result.filter(app => app.city === filters.city);
   }
 
   result.sort((a, b) => new Date(b.applyTime) - new Date(a.applyTime));
@@ -72,7 +86,106 @@ const auditApplication = (id, { status, auditOpinion, auditor }) => {
   app.auditor = auditor || '系统管理员';
   app.auditTime = formatNow();
 
+  if (status === APPLICATION_STATUS.APPROVED) {
+    app.onboardingStage = 2;
+    app.stageStatus = 'pending';
+    if (!app.stageData) app.stageData = { qualification: {}, contract: {}, training: {}, account: {} };
+    app.stageData.qualification = {
+      reviewer: app.auditor,
+      reviewTime: app.auditTime,
+      result: 'passed',
+      opinion: auditOpinion || '资质审核通过，同意加盟'
+    };
+  } else if (status === APPLICATION_STATUS.REJECTED) {
+    app.stageStatus = 'rejected';
+    if (!app.stageData) app.stageData = { qualification: {}, contract: {}, training: {}, account: {} };
+    app.stageData.qualification = {
+      reviewer: app.auditor,
+      reviewTime: app.auditTime,
+      result: 'rejected',
+      opinion: auditOpinion
+    };
+  }
+
   return formatApplication(app);
+};
+
+const advanceStage = (id, stageData) => {
+  const app = applications.find(a => a.id === String(id));
+  if (!app) throw new Error('申请记录不存在');
+
+  if (app.status === APPLICATION_STATUS.REJECTED) {
+    throw new Error('已驳回的申请无法推进阶段');
+  }
+
+  const currentStage = app.onboardingStage;
+  if (currentStage >= 6) {
+    throw new Error('已完成全部准入阶段');
+  }
+
+  const now = formatNow();
+
+  if (currentStage === 2 && stageData) {
+    app.stageData.contract = {
+      ...app.stageData.contract,
+      ...stageData,
+      signDate: stageData.signDate || now.substring(0, 10)
+    };
+  } else if (currentStage === 3 && stageData) {
+    app.stageData.training = {
+      ...app.stageData.training,
+      ...stageData,
+      result: 'passed'
+    };
+  } else if (currentStage === 4 && stageData) {
+    app.stageData.account = {
+      ...app.stageData.account,
+      ...stageData,
+      openDate: stageData.openDate || now.substring(0, 10),
+      operator: stageData.operator || '系统管理员'
+    };
+  }
+
+  app.onboardingStage = currentStage + 1;
+  app.stageStatus = app.onboardingStage === 6 ? 'completed' : 'in_progress';
+
+  return formatApplication(app);
+};
+
+const updateStageData = (id, stage, data) => {
+  const app = applications.find(a => a.id === String(id));
+  if (!app) throw new Error('申请记录不存在');
+
+  const stageKey = {
+    2: 'qualification',
+    3: 'contract',
+    4: 'training',
+    5: 'account'
+  }[stage];
+
+  if (!stageKey) {
+    throw new Error('无效的阶段');
+  }
+
+  if (!app.stageData) app.stageData = {};
+  app.stageData[stageKey] = {
+    ...app.stageData[stageKey],
+    ...data
+  };
+
+  return formatApplication(app);
+};
+
+const getStageStatistics = () => {
+  const stageStats = {};
+  for (let i = 1; i <= 6; i++) {
+    stageStats[i] = applications.filter(a => a.onboardingStage === i && a.status !== APPLICATION_STATUS.REJECTED).length;
+  }
+  stageStats.rejected = applications.filter(a => a.status === APPLICATION_STATUS.REJECTED).length;
+  stageStats.total = applications.length;
+  stageStats.completed = applications.filter(a => a.onboardingStage === 6 && a.stageStatus === 'completed').length;
+  stageStats.inProgress = applications.filter(a => a.status !== APPLICATION_STATUS.REJECTED && a.onboardingStage < 6).length;
+  return stageStats;
 };
 
 const getStatistics = () => {
@@ -85,7 +198,8 @@ const getStatistics = () => {
     total,
     pending,
     approved,
-    rejected
+    rejected,
+    stageStats: getStageStatistics()
   };
 };
 
@@ -99,5 +213,8 @@ module.exports = {
   getApplicationList,
   getApplicationById,
   auditApplication,
-  getStatistics
+  advanceStage,
+  updateStageData,
+  getStatistics,
+  getStageStatistics
 };

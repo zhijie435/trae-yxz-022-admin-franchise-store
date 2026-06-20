@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { getApplicationList, getApplicationById, auditApplication, getStatistics } = require('./src/franchiseService');
+const { getApplicationList, getApplicationById, auditApplication, getStatistics, advanceStage, updateStageData, getStageStatistics } = require('./src/franchiseService');
 const { getStoreList, getStoreById, getStoreStatistics, createStore, removeStore, updateStoreStatus, updateStore, resetPassword } = require('./src/storeService');
 const { getLevelList, getLevelById, createLevel, updateLevel, updateLevelStatus, removeLevel, getLevelStatistics } = require('./src/levelService');
 const { getContractList, getContractById, createContract, updateContract, updateContractStatus, removeContract, getContractStatistics } = require('./src/contractService');
@@ -19,13 +19,14 @@ app.get('/api/statistics', (req, res) => {
 });
 
 app.get('/api/applications', (req, res) => {
-  const { page = 1, pageSize = 10, status, keyword, city } = req.query;
+  const { page = 1, pageSize = 10, status, keyword, city, stage } = req.query;
   const result = getApplicationList({
     page: parseInt(page),
     pageSize: parseInt(pageSize),
     status,
     keyword,
-    city
+    city,
+    stage
   });
   res.json({ code: 200, message: 'success', data: result });
 });
@@ -48,6 +49,32 @@ app.put('/api/applications/:id/audit', (req, res) => {
   } catch (error) {
     res.status(400).json({ code: 400, message: error.message, data: null });
   }
+});
+
+app.put('/api/applications/:id/advance-stage', (req, res) => {
+  const { id } = req.params;
+  const { stageData } = req.body;
+  try {
+    const result = advanceStage(id, stageData);
+    res.json({ code: 200, message: '阶段推进成功', data: result });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/applications/:id/stage-data/:stage', (req, res) => {
+  const { id, stage } = req.params;
+  try {
+    const result = updateStageData(id, Number(stage), req.body);
+    res.json({ code: 200, message: '更新成功', data: result });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.get('/api/applications/stats/stage', (req, res) => {
+  const stageStats = getStageStatistics();
+  res.json({ code: 200, message: 'success', data: stageStats });
 });
 
 app.get('/api/stores/statistics', (req, res) => {

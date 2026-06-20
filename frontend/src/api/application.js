@@ -8,6 +8,20 @@ export function getApplicationList(params) {
   })
 }
 
+export function getStatistics() {
+  return request({
+    url: '/statistics',
+    method: 'get'
+  })
+}
+
+export function getStageStatistics() {
+  return request({
+    url: '/applications/stats/stage',
+    method: 'get'
+  })
+}
+
 export function getApplicationDetail(id) {
   return request({
     url: `/applications/${id}`,
@@ -23,9 +37,18 @@ export function auditApplication(id, data) {
   })
 }
 
-export function getStatistics() {
+export function advanceStage(id, stageData) {
   return request({
-    url: '/statistics',
-    method: 'get'
+    url: `/applications/${id}/advance-stage`,
+    method: 'put',
+    data: { stageData }
+  })
+}
+
+export function updateStageData(id, stage, data) {
+  return request({
+    url: `/applications/${id}/stage-data/${stage}`,
+    method: 'put',
+    data
   })
 }

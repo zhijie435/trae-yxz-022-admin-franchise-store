@@ -1,57 +1,94 @@
 <template>
   <div class="application-list">
-    <div class="stat-cards">
-      <el-row :gutter="16">
-        <el-col :xs="12" :sm="6">
-          <div class="stat-card total">
-            <div class="stat-icon">
-              <el-icon><Document /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statistics.total }}</div>
-              <div class="stat-label">申请总数</div>
-            </div>
+    <el-row :gutter="16" class="stat-row">
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card total">
+          <div class="stat-icon">
+            <el-icon><Document /></el-icon>
           </div>
-        </el-col>
-        <el-col :xs="12" :sm="6">
-          <div class="stat-card pending">
-            <div class="stat-icon">
-              <el-icon><Clock /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statistics.pending }}</div>
-              <div class="stat-label">待审核</div>
-            </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ statistics.total }}</div>
+            <div class="stat-label">申请总数</div>
           </div>
-        </el-col>
-        <el-col :xs="12" :sm="6">
-          <div class="stat-card approved">
-            <div class="stat-icon">
-              <el-icon><CircleCheck /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statistics.approved }}</div>
-              <div class="stat-label">已通过</div>
-            </div>
+        </div>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card pending">
+          <div class="stat-icon">
+            <el-icon><Clock /></el-icon>
           </div>
-        </el-col>
-        <el-col :xs="12" :sm="6">
-          <div class="stat-card rejected">
-            <div class="stat-icon">
-              <el-icon><CircleClose /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statistics.rejected }}</div>
-              <div class="stat-label">已驳回</div>
-            </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ statistics.pending }}</div>
+            <div class="stat-label">待审核</div>
           </div>
-        </el-col>
-      </el-row>
-    </div>
+        </div>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card in-progress">
+          <div class="stat-icon">
+            <el-icon><TrendCharts /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ stageStats.inProgress || 0 }}</div>
+            <div class="stat-label">准入中</div>
+          </div>
+        </div>
+      </el-col>
+      <el-col :xs="12" :sm="6">
+        <div class="stat-card completed">
+          <div class="stat-icon">
+            <el-icon><CircleCheck /></el-icon>
+          </div>
+          <div class="stat-info">
+            <div class="stat-value">{{ stageStats.completed || 0 }}</div>
+            <div class="stat-label">已上线</div>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <el-card class="stage-pipeline-card" shadow="never">
+      <template #header>
+        <div class="card-title-wrap">
+          <el-icon class="card-icon"><Connection /></el-icon>
+          <span class="card-title">准入流程总览</span>
+        </div>
+      </template>
+      <div class="pipeline-steps">
+        <div
+          v-for="stage in stageList"
+          :key="stage.id"
+          class="pipeline-step"
+          :class="{ active: filterForm.stage === String(stage.id) }"
+          @click="handleStageClick(stage.id)"
+        >
+          <div class="step-icon" :style="{ background: stage.color }">
+            <el-icon><component :is="stage.icon" /></el-icon>
+          </div>
+          <div class="step-info">
+            <div class="step-name">{{ stage.name }}</div>
+            <div class="step-count">{{ stage.count }} 家</div>
+          </div>
+          <div v-if="stage.id < 6" class="step-arrow">
+            <el-icon><ArrowRight /></el-icon>
+          </div>
+        </div>
+      </div>
+    </el-card>
 
     <el-card class="filter-card" shadow="never">
       <el-form :inline="true" :model="filterForm" class="filter-form">
-        <el-form-item label="状态">
+        <el-form-item label="准入阶段">
+          <el-select v-model="filterForm.stage" placeholder="全部阶段" style="width: 150px" clearable @change="handleSearch">
+            <el-option label="提交申请" value="1" />
+            <el-option label="资质审核" value="2" />
+            <el-option label="合同签约" value="3" />
+            <el-option label="加盟培训" value="4" />
+            <el-option label="账号开通" value="5" />
+            <el-option label="上线运营" value="6" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="审核状态">
           <el-select v-model="filterForm.status" placeholder="全部状态" style="width: 140px" clearable @change="handleSearch">
             <el-option label="待审核" value="pending" />
             <el-option label="已通过" value="approved" />
@@ -66,6 +103,8 @@
             <el-option label="深圳市" value="深圳市" />
             <el-option label="杭州市" value="杭州市" />
             <el-option label="成都市" value="成都市" />
+            <el-option label="武汉市" value="武汉市" />
+            <el-option label="南京市" value="南京市" />
           </el-select>
         </el-form-item>
         <el-form-item label="关键词">
@@ -112,25 +151,36 @@
         stripe
         @row-click="handleRowClick"
       >
-        <el-table-column prop="applyNo" label="申请编号" width="160" />
+        <el-table-column prop="applyNo" label="申请编号" width="150" align="center">
+          <template #default="{ row }">
+            <span class="mono-text">{{ row.applyNo }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="companyName" label="公司名称" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="legalPerson" label="法人代表" width="100" />
-        <el-table-column prop="phone" label="联系电话" width="140" />
-        <el-table-column label="所在城市" width="140">
+        <el-table-column prop="legalPerson" label="法人代表" width="100" align="center" />
+        <el-table-column prop="phone" label="联系电话" width="130" align="center" />
+        <el-table-column label="所在城市" width="120" align="center">
           <template #default="{ row }">
-            {{ row.city }} {{ row.district }}
+            {{ row.city }}
           </template>
         </el-table-column>
-        <el-table-column prop="registeredCapital" label="注册资金" width="110" />
-        <el-table-column prop="statusText" label="状态" width="100">
+        <el-table-column label="准入阶段" width="130" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'pending'" type="warning" effect="light">{{ row.statusText }}</el-tag>
-            <el-tag v-else-if="row.status === 'approved'" type="success" effect="light">{{ row.statusText }}</el-tag>
-            <el-tag v-else type="danger" effect="light">{{ row.statusText }}</el-tag>
+            <el-tag :type="row.stageType" effect="light" size="small">
+              <el-icon style="margin-right: 4px; font-size: 12px"><component :is="getStageIcon(row.onboardingStage)" /></el-icon>
+              {{ row.stageName }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="applyTime" label="申请时间" width="170" />
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column prop="statusText" label="审核状态" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.status === 'pending'" type="warning" effect="light" size="small">{{ row.statusText }}</el-tag>
+            <el-tag v-else-if="row.status === 'approved'" type="success" effect="light" size="small">{{ row.statusText }}</el-tag>
+            <el-tag v-else type="danger" effect="light" size="small">{{ row.statusText }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="applyTime" label="申请时间" width="160" align="center" />
+        <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click.stop="viewDetail(row)">
               <el-icon><View /></el-icon>
@@ -153,6 +203,15 @@
             >
               <el-icon><CircleClose /></el-icon>
               驳回
+            </el-button>
+            <el-button
+              v-if="row.status !== 'rejected' && row.onboardingStage < 6 && row.status === 'approved'"
+              type="warning"
+              link
+              @click.stop="viewDetail(row)"
+            >
+              <el-icon><Promotion /></el-icon>
+              推进
             </el-button>
           </template>
         </el-table-column>
@@ -210,12 +269,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Document, Clock, CircleCheck, CircleClose, Search, Refresh, View, TrendCharts, Connection, ArrowRight, Promotion } from '@element-plus/icons-vue'
 import {
   getApplicationList,
   getStatistics,
+  getStageStatistics,
   auditApplication
 } from '../api/application.js'
 
@@ -230,9 +291,20 @@ const statistics = ref({
   approved: 0,
   rejected: 0
 })
+const stageStats = ref({})
+
+const stageList = computed(() => [
+  { id: 1, name: '提交申请', icon: Document, color: '#667eea', count: stageStats.value[1] || 0 },
+  { id: 2, name: '资质审核', icon: Clock, color: '#f59e0b', count: stageStats.value[2] || 0 },
+  { id: 3, name: '合同签约', icon: Document, color: '#10b981', count: stageStats.value[3] || 0 },
+  { id: 4, name: '加盟培训', icon: TrendCharts, color: '#8b5cf6', count: stageStats.value[4] || 0 },
+  { id: 5, name: '账号开通', icon: CircleCheck, color: '#06b6d4', count: stageStats.value[5] || 0 },
+  { id: 6, name: '上线运营', icon: Promotion, color: '#22c55e', count: stageStats.value[6] || 0 }
+])
 
 const filterForm = reactive({
   status: '',
+  stage: '',
   city: '',
   keyword: ''
 })
@@ -249,11 +321,31 @@ const rejectForm = reactive({
   auditOpinion: ''
 })
 
+const getStageIcon = (stage) => {
+  const icons = {
+    1: Document,
+    2: Clock,
+    3: Document,
+    4: TrendCharts,
+    5: CircleCheck,
+    6: Promotion
+  }
+  return icons[stage] || Document
+}
+
 const loadStatistics = async () => {
   try {
     statistics.value = await getStatistics()
   } catch (e) {
     console.error('获取统计数据失败', e)
+  }
+}
+
+const loadStageStats = async () => {
+  try {
+    stageStats.value = await getStageStatistics()
+  } catch (e) {
+    console.error('获取阶段统计失败', e)
   }
 }
 
@@ -265,6 +357,7 @@ const loadList = async () => {
       pageSize: pagination.pageSize
     }
     if (filterForm.status) params.status = filterForm.status
+    if (filterForm.stage) params.stage = filterForm.stage
     if (filterForm.city) params.city = filterForm.city
     if (filterForm.keyword) params.keyword = filterForm.keyword
     const result = await getApplicationList(params)
@@ -284,10 +377,20 @@ const handleSearch = () => {
 
 const handleReset = () => {
   filterForm.status = ''
+  filterForm.stage = ''
   filterForm.city = ''
   filterForm.keyword = ''
   pagination.page = 1
   loadList()
+}
+
+const handleStageClick = (stageId) => {
+  if (filterForm.stage === String(stageId)) {
+    filterForm.stage = ''
+  } else {
+    filterForm.stage = String(stageId)
+  }
+  handleSearch()
 }
 
 const handleSizeChange = (size) => {
@@ -311,7 +414,7 @@ const handleRowClick = (row) => {
 
 const handleApprove = (row) => {
   ElMessageBox.confirm(
-    `确定要通过【${row.companyName}】的加盟申请吗？`,
+    `确定要通过【${row.companyName}】的加盟申请吗？通过后将进入资质审核阶段。`,
     '审核通过',
     {
       confirmButtonText: '确认通过',
@@ -326,9 +429,10 @@ const handleApprove = (row) => {
         auditOpinion: '资质审核通过，同意加盟',
         auditor: '管理员'
       })
-      ElMessage.success('审核通过')
+      ElMessage.success('审核通过，已进入资质审核阶段')
       loadList()
       loadStatistics()
+      loadStageStats()
     } catch (e) {
       ElMessage.error(e.message || '操作失败')
     } finally {
@@ -359,6 +463,7 @@ const confirmReject = async () => {
     rejectDialogVisible.value = false
     loadList()
     loadStatistics()
+    loadStageStats()
   } catch (e) {
     ElMessage.error(e.message || '操作失败')
   } finally {
@@ -368,6 +473,7 @@ const confirmReject = async () => {
 
 onMounted(() => {
   loadStatistics()
+  loadStageStats()
   loadList()
 })
 </script>
@@ -377,10 +483,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.stat-cards {
-  margin-bottom: 0;
 }
 
 .stat-card {
@@ -418,12 +520,12 @@ onMounted(() => {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
-.stat-card.approved .stat-icon {
+.stat-card.in-progress .stat-icon {
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
 }
 
-.stat-card.rejected .stat-icon {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+.stat-card.completed .stat-icon {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
 .stat-info {
@@ -441,6 +543,97 @@ onMounted(() => {
   font-size: 13px;
   color: #909399;
   margin-top: 4px;
+}
+
+.stage-pipeline-card {
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.card-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-icon {
+  font-size: 18px;
+  color: #3b82f6;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.pipeline-steps {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pipeline-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid transparent;
+  flex: 1;
+  min-width: 140px;
+}
+
+.pipeline-step:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.pipeline-step.active {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.step-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.step-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 2px;
+}
+
+.step-count {
+  font-size: 18px;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.step-arrow {
+  color: #cbd5e1;
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 .filter-card {
@@ -461,10 +654,10 @@ onMounted(() => {
   align-items: center;
 }
 
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
+.mono-text {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 500;
 }
 
 .pagination-wrap {
@@ -492,6 +685,12 @@ onMounted(() => {
     width: 40px;
     height: 40px;
     font-size: 20px;
+  }
+  .pipeline-step {
+    min-width: 100%;
+  }
+  .step-arrow {
+    display: none;
   }
 }
 </style>
