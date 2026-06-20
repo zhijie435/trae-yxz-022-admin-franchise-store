@@ -43,7 +43,7 @@
             {{ application.city }} {{ application.district }}
           </el-descriptions-item>
           <el-descriptions-item label="营业执照号">
-            {{ application.businessLicense }}
+            <span class="monospace">{{ application.businessLicense }}</span>
           </el-descriptions-item>
           <el-descriptions-item label="注册资金">
             <span class="highlight">{{ application.registeredCapital }}</span>

@@ -58,6 +58,16 @@
             <el-option label="已驳回" value="rejected" />
           </el-select>
         </el-form-item>
+        <el-form-item label="城市">
+          <el-select v-model="filterForm.city" placeholder="全部城市" style="width: 140px" clearable @change="handleSearch">
+            <el-option label="北京市" value="北京市" />
+            <el-option label="上海市" value="上海市" />
+            <el-option label="广州市" value="广州市" />
+            <el-option label="深圳市" value="深圳市" />
+            <el-option label="杭州市" value="杭州市" />
+            <el-option label="成都市" value="成都市" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="关键词">
           <el-input
             v-model="filterForm.keyword"
@@ -204,7 +214,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  getApplications,
+  getApplicationList,
   getStatistics,
   auditApplication
 } from '../api/application.js'
@@ -223,6 +233,7 @@ const statistics = ref({
 
 const filterForm = reactive({
   status: '',
+  city: '',
   keyword: ''
 })
 
@@ -254,8 +265,9 @@ const loadList = async () => {
       pageSize: pagination.pageSize
     }
     if (filterForm.status) params.status = filterForm.status
+    if (filterForm.city) params.city = filterForm.city
     if (filterForm.keyword) params.keyword = filterForm.keyword
-    const result = await getApplications(params)
+    const result = await getApplicationList(params)
     tableData.value = result.list
     pagination.total = result.total
   } catch (e) {
@@ -272,6 +284,7 @@ const handleSearch = () => {
 
 const handleReset = () => {
   filterForm.status = ''
+  filterForm.city = ''
   filterForm.keyword = ''
   pagination.page = 1
   loadList()
