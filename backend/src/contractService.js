@@ -1,3 +1,5 @@
+const { getStoreByNo } = require('./storeService');
+
 const mockContracts = [
   {
     id: 'CT001',
@@ -157,6 +159,13 @@ const createContract = (payload) => {
 
   if (!partnerName || !storeName || !startDate || !endDate) {
     throw new Error('必填项不能为空');
+  }
+
+  if (storeNo) {
+    const store = getStoreByNo(storeNo);
+    if (store && store.status === 'disabled') {
+      throw new Error('门店已被禁用，无法为其创建合同');
+    }
   }
 
   const newId = 'CT' + String(nextContractCounter++).padStart(3, '0');

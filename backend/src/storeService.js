@@ -163,6 +163,11 @@ const getStoreById = (id) => {
   return store ? formatStore(store) : null;
 };
 
+const getStoreByNo = (storeNo) => {
+  const store = stores.find(s => s.storeNo === String(storeNo));
+  return store ? formatStore(store) : null;
+};
+
 const getStoreStatistics = () => {
   const total = stores.length;
   const enabled = stores.filter(s => s.status === 'enabled').length;
@@ -272,6 +277,7 @@ const resetPassword = (id, newPassword) => {
 module.exports = {
   getStoreList,
   getStoreById,
+  getStoreByNo,
   getStoreStatistics,
   createStore,
   removeStore,

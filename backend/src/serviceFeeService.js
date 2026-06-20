@@ -1,3 +1,5 @@
+const { getStoreByNo } = require('./storeService');
+
 const mockServiceFees = [
   {
     id: 'SF001',
@@ -190,6 +192,13 @@ const createServiceFee = (payload) => {
 
   if (!contractNo || !partnerName || !storeName || !feeRate || !revenueAmount || !period) {
     throw new Error('必填项不能为空');
+  }
+
+  if (storeNo) {
+    const store = getStoreByNo(storeNo);
+    if (store && store.status === 'disabled') {
+      throw new Error('门店已被禁用，无法为其创建服务费记录');
+    }
   }
 
   const newId = 'SF' + String(nextFeeCounter++).padStart(3, '0');
