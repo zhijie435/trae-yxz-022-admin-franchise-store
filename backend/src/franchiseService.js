@@ -38,6 +38,10 @@ const getApplicationList = (filters = {}) => {
     );
   }
 
+  if (filters.province) {
+    result = result.filter(app => app.province === filters.province);
+  }
+
   if (filters.city) {
     result = result.filter(app => app.city === filters.city);
   }

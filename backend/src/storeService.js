@@ -9,6 +9,7 @@ const mockStores = [
     partnerName: '张伟',
     partnerPhone: '13800138001',
     companyName: '上海佳和餐饮管理有限公司',
+    province: '北京市',
     city: '北京市',
     district: '朝阳区',
     address: '朝阳区建国路88号SOHO现代城A座1层',
@@ -26,6 +27,7 @@ const mockStores = [
     partnerName: '李娜',
     partnerPhone: '13900139002',
     companyName: '北京优品零售有限公司',
+    province: '上海市',
     city: '上海市',
     district: '浦东新区',
     address: '浦东新区世纪大道100号环球金融中心B1层',
@@ -43,6 +45,7 @@ const mockStores = [
     partnerName: '陈静',
     partnerPhone: '13400134006',
     companyName: '杭州美味餐饮管理有限公司',
+    province: '浙江省',
     city: '杭州市',
     district: '西湖区',
     address: '西湖区文三路259号昌地火炬大厦1层',
@@ -60,6 +63,7 @@ const mockStores = [
     partnerName: '王强',
     partnerPhone: '13700137003',
     companyName: '广州恒信服务有限公司',
+    province: '广东省',
     city: '广州市',
     district: '天河区',
     address: '天河区体育西路103号维多利广场1层',
@@ -77,6 +81,7 @@ const mockStores = [
     partnerName: '赵敏',
     partnerPhone: '13600136004',
     companyName: '成都智学教育咨询有限公司',
+    province: '广东省',
     city: '深圳市',
     district: '南山区',
     address: '南山区科技园南区高新南一道飞亚达大厦1层',
@@ -110,7 +115,7 @@ const formatNow = () => {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
 };
 
-const getStoreList = ({ page = 1, pageSize = 10, status, keyword, city } = {}) => {
+const getStoreList = ({ page = 1, pageSize = 10, status, keyword, province, city } = {}) => {
   let result = [...stores];
 
   if (status && status !== 'all') {
@@ -126,6 +131,10 @@ const getStoreList = ({ page = 1, pageSize = 10, status, keyword, city } = {}) =
       s.partnerPhone.includes(kw) ||
       s.account.toLowerCase().includes(kw)
     );
+  }
+
+  if (province && province !== 'all') {
+    result = result.filter(s => s.province === province);
   }
 
   if (city && city !== 'all') {
@@ -165,10 +174,10 @@ const getStoreStatistics = () => {
 const createStore = (payload) => {
   const {
     storeName, partnerName, partnerPhone, companyName,
-    city, district, address, storeArea, account, openDate, remark = ''
+    province, city, district, address, storeArea, account, openDate, remark = ''
   } = payload;
 
-  if (!storeName || !partnerName || !partnerPhone || !city || !district || !address || !account) {
+  if (!storeName || !partnerName || !partnerPhone || !province || !city || !district || !address || !account) {
     throw new Error('必填项不能为空');
   }
 
@@ -188,6 +197,7 @@ const createStore = (payload) => {
     partnerName,
     partnerPhone,
     companyName: companyName || '',
+    province,
     city,
     district,
     address,
@@ -236,7 +246,7 @@ const updateStore = (id, payload) => {
 
   const allowedFields = [
     'storeNo', 'storeName', 'partnerName', 'partnerPhone',
-    'companyName', 'city', 'district', 'address', 'storeArea',
+    'companyName', 'province', 'city', 'district', 'address', 'storeArea',
     'account', 'openDate', 'remark'
   ];
   allowedFields.forEach(field => {

@@ -242,7 +242,7 @@
             <el-link type="primary">{{ application.phone }}</el-link>
           </el-descriptions-item>
           <el-descriptions-item label="所在城市">
-            {{ application.city }} {{ application.district }}
+            {{ application.province }} {{ application.city }} {{ application.district }}
           </el-descriptions-item>
           <el-descriptions-item label="营业执照号">
             <span class="monospace">{{ application.businessLicense }}</span>

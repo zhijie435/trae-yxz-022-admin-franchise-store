@@ -95,16 +95,14 @@
             <el-option label="已驳回" value="rejected" />
           </el-select>
         </el-form-item>
+        <el-form-item label="省份">
+          <el-select v-model="filterForm.province" placeholder="全部省份" style="width: 140px" clearable @change="handleProvinceChange">
+            <el-option v-for="p in provinceList" :key="p" :label="p" :value="p" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="城市">
-          <el-select v-model="filterForm.city" placeholder="全部城市" style="width: 140px" clearable @change="handleSearch">
-            <el-option label="北京市" value="北京市" />
-            <el-option label="上海市" value="上海市" />
-            <el-option label="广州市" value="广州市" />
-            <el-option label="深圳市" value="深圳市" />
-            <el-option label="杭州市" value="杭州市" />
-            <el-option label="成都市" value="成都市" />
-            <el-option label="武汉市" value="武汉市" />
-            <el-option label="南京市" value="南京市" />
+          <el-select v-model="filterForm.city" placeholder="全部城市" style="width: 140px" clearable :disabled="!filterForm.province" @change="handleSearch">
+            <el-option v-for="c in cityOptions" :key="c" :label="c" :value="c" />
           </el-select>
         </el-form-item>
         <el-form-item label="关键词">
@@ -159,9 +157,9 @@
         <el-table-column prop="companyName" label="公司名称" min-width="200" show-overflow-tooltip />
         <el-table-column prop="legalPerson" label="法人代表" width="100" align="center" />
         <el-table-column prop="phone" label="联系电话" width="130" align="center" />
-        <el-table-column label="所在城市" width="120" align="center">
+        <el-table-column label="所在城市" width="140" align="center">
           <template #default="{ row }">
-            {{ row.city }}
+            {{ row.province }} {{ row.city }}
           </template>
         </el-table-column>
         <el-table-column label="准入阶段" width="130" align="center">
@@ -277,7 +275,9 @@ import {
   getApplicationList,
   getStatistics,
   getStageStatistics,
-  auditApplication
+  auditApplication,
+  getProvinces,
+  getCitiesByProvince
 } from '../api/application.js'
 
 const router = useRouter()
@@ -292,6 +292,8 @@ const statistics = ref({
   rejected: 0
 })
 const stageStats = ref({})
+const provinceList = ref([])
+const cityOptions = ref([])
 
 const stageList = computed(() => [
   { id: 1, name: '提交申请', icon: Document, color: '#667eea', count: stageStats.value[1] || 0 },
@@ -305,6 +307,7 @@ const stageList = computed(() => [
 const filterForm = reactive({
   status: '',
   stage: '',
+  province: '',
   city: '',
   keyword: ''
 })
@@ -358,6 +361,7 @@ const loadList = async () => {
     }
     if (filterForm.status) params.status = filterForm.status
     if (filterForm.stage) params.stage = filterForm.stage
+    if (filterForm.province) params.province = filterForm.province
     if (filterForm.city) params.city = filterForm.city
     if (filterForm.keyword) params.keyword = filterForm.keyword
     const result = await getApplicationList(params)
@@ -378,10 +382,25 @@ const handleSearch = () => {
 const handleReset = () => {
   filterForm.status = ''
   filterForm.stage = ''
+  filterForm.province = ''
   filterForm.city = ''
   filterForm.keyword = ''
+  cityOptions.value = []
   pagination.page = 1
   loadList()
+}
+
+const handleProvinceChange = async (val) => {
+  filterForm.city = ''
+  cityOptions.value = []
+  if (val) {
+    try {
+      cityOptions.value = await getCitiesByProvince(val)
+    } catch (e) {
+      cityOptions.value = []
+    }
+  }
+  handleSearch()
 }
 
 const handleStageClick = (stageId) => {
@@ -471,7 +490,12 @@ const confirmReject = async () => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    provinceList.value = await getProvinces()
+  } catch (e) {
+    console.error('加载省份列表失败', e)
+  }
   loadStatistics()
   loadStageStats()
   loadList()

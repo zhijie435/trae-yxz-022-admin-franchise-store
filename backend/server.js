@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const { getAllProvinces, getCitiesByProvince } = require('./src/constants');
 const { getApplicationList, getApplicationById, auditApplication, getStatistics, advanceStage, updateStageData, getStageStatistics } = require('./src/franchiseService');
 const { getStoreList, getStoreById, getStoreStatistics, createStore, removeStore, updateStoreStatus, updateStore, resetPassword } = require('./src/storeService');
 const { getLevelList, getLevelById, createLevel, updateLevel, updateLevelStatus, removeLevel, getLevelStatistics } = require('./src/levelService');
@@ -18,13 +19,25 @@ app.get('/api/statistics', (req, res) => {
   res.json({ code: 200, message: 'success', data: stats });
 });
 
+app.get('/api/regions/provinces', (req, res) => {
+  const provinces = getAllProvinces();
+  res.json({ code: 200, message: 'success', data: provinces });
+});
+
+app.get('/api/regions/cities', (req, res) => {
+  const { province } = req.query;
+  const cities = getCitiesByProvince(province);
+  res.json({ code: 200, message: 'success', data: cities });
+});
+
 app.get('/api/applications', (req, res) => {
-  const { page = 1, pageSize = 10, status, keyword, city, stage } = req.query;
+  const { page = 1, pageSize = 10, status, keyword, province, city, stage } = req.query;
   const result = getApplicationList({
     page: parseInt(page),
     pageSize: parseInt(pageSize),
     status,
     keyword,
+    province,
     city,
     stage
   });
@@ -83,12 +96,13 @@ app.get('/api/stores/statistics', (req, res) => {
 });
 
 app.get('/api/stores', (req, res) => {
-  const { page = 1, pageSize = 10, status, keyword, city } = req.query;
+  const { page = 1, pageSize = 10, status, keyword, province, city } = req.query;
   const result = getStoreList({
     page: parseInt(page),
     pageSize: parseInt(pageSize),
     status,
     keyword,
+    province,
     city
   });
   res.json({ code: 200, message: 'success', data: result });

@@ -120,9 +120,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="所在城市" width="130" align="center">
+        <el-table-column label="所在城市" width="180" align="center">
           <template #default="{ row }">
-            {{ row.city }} {{ row.district }}
+            {{ row.province }} {{ row.city }} {{ row.district }}
           </template>
         </el-table-column>
         <el-table-column prop="storeArea" label="面积" width="80" align="center" />
@@ -230,8 +230,17 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="8">
+            <el-form-item label="所在省份" prop="province">
+              <el-select v-model="storeForm.province" placeholder="请选择省份" style="width: 100%" @change="handleProvinceChange">
+                <el-option v-for="p in provinceList" :key="p" :label="p" :value="p" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="所在城市" prop="city">
-              <el-input v-model="storeForm.city" placeholder="如 北京市" />
+              <el-select v-model="storeForm.city" placeholder="请选择城市" style="width: 100%" :disabled="!storeForm.province">
+                <el-option v-for="c in cityOptions" :key="c" :label="c" :value="c" />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -239,6 +248,8 @@
               <el-input v-model="storeForm.district" placeholder="如 朝阳区" />
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="开业日期">
               <el-date-picker
@@ -277,7 +288,7 @@
           <el-descriptions-item label="联系电话">
             <el-link type="primary">{{ currentDetail.partnerPhone }}</el-link>
           </el-descriptions-item>
-          <el-descriptions-item label="所在城市">{{ currentDetail.city }} {{ currentDetail.district }}</el-descriptions-item>
+          <el-descriptions-item label="所在城市">{{ currentDetail.province }} {{ currentDetail.city }} {{ currentDetail.district }}</el-descriptions-item>
           <el-descriptions-item label="公司名称">{{ currentDetail.companyName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="门店面积">{{ currentDetail.storeArea || '-' }}</el-descriptions-item>
           <el-descriptions-item label="开业时间">{{ currentDetail.openDate }}</el-descriptions-item>
@@ -352,7 +363,9 @@ import {
   deleteStore,
   toggleStoreStatus,
   getStoreDetail,
-  resetPassword
+  resetPassword,
+  getProvinces,
+  getCitiesByProvince
 } from '../api/store.js';
 
 const loading = ref(false);
@@ -365,6 +378,9 @@ const statistics = ref({
   disabled: 0,
   cities: 0
 });
+
+const provinceList = ref([]);
+const cityOptions = ref([]);
 
 const filterForm = reactive({
   status: '',
@@ -387,6 +403,7 @@ const storeForm = reactive({
   partnerName: '',
   partnerPhone: '',
   companyName: '',
+  province: '',
   city: '',
   district: '',
   address: '',
@@ -407,7 +424,8 @@ const formRules = {
     { required: true, message: '请输入联系电话', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
   ],
-  city: [{ required: true, message: '请输入城市', trigger: 'blur' }],
+  province: [{ required: true, message: '请选择省份', trigger: 'change' }],
+  city: [{ required: true, message: '请选择城市', trigger: 'change' }],
   district: [{ required: true, message: '请输入区/县', trigger: 'blur' }],
   address: [{ required: true, message: '请输入门店详细地址', trigger: 'blur' }]
 };
@@ -501,6 +519,7 @@ const handleAdd = () => {
     partnerName: '',
     partnerPhone: '',
     companyName: '',
+    province: '',
     city: '',
     district: '',
     address: '',
@@ -508,6 +527,7 @@ const handleAdd = () => {
     openDate: '',
     remark: ''
   });
+  cityOptions.value = [];
   formVisible.value = true;
 };
 
@@ -520,6 +540,7 @@ const handleEdit = (row) => {
     partnerName: row.partnerName,
     partnerPhone: row.partnerPhone,
     companyName: row.companyName || '',
+    province: row.province || '',
     city: row.city,
     district: row.district,
     address: row.address,
@@ -527,7 +548,29 @@ const handleEdit = (row) => {
     openDate: row.openDate || '',
     remark: row.remark || ''
   });
+  if (row.province) {
+    getCitiesByProvince(row.province).then(cities => {
+      cityOptions.value = cities;
+    }).catch(() => {
+      cityOptions.value = [];
+    });
+  } else {
+    cityOptions.value = [];
+  }
   formVisible.value = true;
+};
+
+const handleProvinceChange = async (val) => {
+  storeForm.city = '';
+  if (val) {
+    try {
+      cityOptions.value = await getCitiesByProvince(val);
+    } catch (e) {
+      cityOptions.value = [];
+    }
+  } else {
+    cityOptions.value = [];
+  }
 };
 
 const handleSubmitForm = async () => {
@@ -666,7 +709,12 @@ const handleSubmitResetPwd = async () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
+  try {
+    provinceList.value = await getProvinces();
+  } catch (e) {
+    console.error('加载省份列表失败', e);
+  }
   loadStatistics();
   loadList();
 });
