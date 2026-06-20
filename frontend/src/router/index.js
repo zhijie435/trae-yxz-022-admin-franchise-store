@@ -22,6 +22,30 @@ const routes = [
     name: 'StoreList',
     component: () => import('@/views/StoreList.vue'),
     meta: { title: '门店列表', activeMenu: 'stores' }
+  },
+  {
+    path: '/levels',
+    name: 'FranchiseLevel',
+    component: () => import('@/views/FranchiseLevel.vue'),
+    meta: { title: '等级管理', activeMenu: 'levels' }
+  },
+  {
+    path: '/contracts',
+    name: 'ContractManage',
+    component: () => import('@/views/ContractManage.vue'),
+    meta: { title: '合同管理', activeMenu: 'contracts' }
+  },
+  {
+    path: '/deposits',
+    name: 'DepositManage',
+    component: () => import('@/views/DepositManage.vue'),
+    meta: { title: '保证金管理', activeMenu: 'deposits' }
+  },
+  {
+    path: '/service-fees',
+    name: 'ServiceFeeManage',
+    component: () => import('@/views/ServiceFeeManage.vue'),
+    meta: { title: '服务费管理', activeMenu: 'service-fees' }
   }
 ];
 

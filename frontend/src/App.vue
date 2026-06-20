@@ -25,6 +25,38 @@
               <el-icon><Shop /></el-icon>
               <span>门店管理</span>
             </router-link>
+            <router-link
+              to="/levels"
+              class="nav-item"
+              :class="{ active: route.meta.activeMenu === 'levels' }"
+            >
+              <el-icon><Medal /></el-icon>
+              <span>等级管理</span>
+            </router-link>
+            <router-link
+              to="/contracts"
+              class="nav-item"
+              :class="{ active: route.meta.activeMenu === 'contracts' }"
+            >
+              <el-icon><Notebook /></el-icon>
+              <span>合同管理</span>
+            </router-link>
+            <router-link
+              to="/deposits"
+              class="nav-item"
+              :class="{ active: route.meta.activeMenu === 'deposits' }"
+            >
+              <el-icon><Wallet /></el-icon>
+              <span>保证金管理</span>
+            </router-link>
+            <router-link
+              to="/service-fees"
+              class="nav-item"
+              :class="{ active: route.meta.activeMenu === 'service-fees' }"
+            >
+              <el-icon><Coin /></el-icon>
+              <span>服务费管理</span>
+            </router-link>
           </nav>
         </div>
         <div class="header-right">
@@ -43,7 +75,7 @@
 
 <script setup>
 import { useRoute } from 'vue-router';
-import { OfficeBuilding, User, Document, Shop } from '@element-plus/icons-vue';
+import { OfficeBuilding, User, Document, Shop, Medal, Notebook, Wallet, Coin } from '@element-plus/icons-vue';
 
 const route = useRoute();
 </script>

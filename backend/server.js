@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const { getApplicationList, getApplicationById, auditApplication, getStatistics } = require('./src/franchiseService');
 const { getStoreList, getStoreById, getStoreStatistics, createStore, removeStore, updateStoreStatus } = require('./src/storeService');
+const { getLevelList, getLevelById, createLevel, updateLevel, updateLevelStatus, removeLevel, getLevelStatistics } = require('./src/levelService');
+const { getContractList, getContractById, createContract, updateContract, updateContractStatus, removeContract, getContractStatistics } = require('./src/contractService');
+const { getDepositList, getDepositById, createDeposit, payDeposit, refundDeposit, getDepositStatistics } = require('./src/depositService');
+const { getServiceFeeList, getServiceFeeById, createServiceFee, payServiceFee, getServiceFeeStatistics } = require('./src/serviceFeeService');
 
 const app = express();
 const PORT = 3060;
@@ -97,6 +101,191 @@ app.put('/api/stores/:id/status', (req, res) => {
     const { status } = req.body;
     const store = updateStoreStatus(id, status);
     res.json({ code: 200, message: '状态更新成功', data: store });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.get('/api/levels/statistics', (req, res) => {
+  const stats = getLevelStatistics();
+  res.json({ code: 200, message: 'success', data: stats });
+});
+
+app.get('/api/levels', (req, res) => {
+  const { page = 1, pageSize = 10, status, keyword } = req.query;
+  const result = getLevelList({ page: parseInt(page), pageSize: parseInt(pageSize), status, keyword });
+  res.json({ code: 200, message: 'success', data: result });
+});
+
+app.get('/api/levels/:id', (req, res) => {
+  const level = getLevelById(req.params.id);
+  if (!level) return res.status(404).json({ code: 404, message: '等级不存在', data: null });
+  res.json({ code: 200, message: 'success', data: level });
+});
+
+app.post('/api/levels', (req, res) => {
+  try {
+    const level = createLevel(req.body);
+    res.json({ code: 200, message: '添加成功', data: level });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/levels/:id', (req, res) => {
+  try {
+    const level = updateLevel(req.params.id, req.body);
+    res.json({ code: 200, message: '更新成功', data: level });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/levels/:id/status', (req, res) => {
+  try {
+    const level = updateLevelStatus(req.params.id, req.body.status);
+    res.json({ code: 200, message: '状态更新成功', data: level });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.delete('/api/levels/:id', (req, res) => {
+  try {
+    removeLevel(req.params.id);
+    res.json({ code: 200, message: '删除成功', data: null });
+  } catch (error) {
+    res.status(404).json({ code: 404, message: error.message, data: null });
+  }
+});
+
+app.get('/api/contracts/statistics', (req, res) => {
+  const stats = getContractStatistics();
+  res.json({ code: 200, message: 'success', data: stats });
+});
+
+app.get('/api/contracts', (req, res) => {
+  const { page = 1, pageSize = 10, status, keyword } = req.query;
+  const result = getContractList({ page: parseInt(page), pageSize: parseInt(pageSize), status, keyword });
+  res.json({ code: 200, message: 'success', data: result });
+});
+
+app.get('/api/contracts/:id', (req, res) => {
+  const contract = getContractById(req.params.id);
+  if (!contract) return res.status(404).json({ code: 404, message: '合同不存在', data: null });
+  res.json({ code: 200, message: 'success', data: contract });
+});
+
+app.post('/api/contracts', (req, res) => {
+  try {
+    const contract = createContract(req.body);
+    res.json({ code: 200, message: '添加成功', data: contract });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/contracts/:id', (req, res) => {
+  try {
+    const contract = updateContract(req.params.id, req.body);
+    res.json({ code: 200, message: '更新成功', data: contract });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/contracts/:id/status', (req, res) => {
+  try {
+    const contract = updateContractStatus(req.params.id, req.body.status);
+    res.json({ code: 200, message: '状态更新成功', data: contract });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.delete('/api/contracts/:id', (req, res) => {
+  try {
+    removeContract(req.params.id);
+    res.json({ code: 200, message: '删除成功', data: null });
+  } catch (error) {
+    res.status(404).json({ code: 404, message: error.message, data: null });
+  }
+});
+
+app.get('/api/deposits/statistics', (req, res) => {
+  const stats = getDepositStatistics();
+  res.json({ code: 200, message: 'success', data: stats });
+});
+
+app.get('/api/deposits', (req, res) => {
+  const { page = 1, pageSize = 10, status, keyword } = req.query;
+  const result = getDepositList({ page: parseInt(page), pageSize: parseInt(pageSize), status, keyword });
+  res.json({ code: 200, message: 'success', data: result });
+});
+
+app.get('/api/deposits/:id', (req, res) => {
+  const deposit = getDepositById(req.params.id);
+  if (!deposit) return res.status(404).json({ code: 404, message: '保证金记录不存在', data: null });
+  res.json({ code: 200, message: 'success', data: deposit });
+});
+
+app.post('/api/deposits', (req, res) => {
+  try {
+    const deposit = createDeposit(req.body);
+    res.json({ code: 200, message: '添加成功', data: deposit });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/deposits/:id/pay', (req, res) => {
+  try {
+    const deposit = payDeposit(req.params.id, req.body);
+    res.json({ code: 200, message: '缴纳成功', data: deposit });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/deposits/:id/refund', (req, res) => {
+  try {
+    const deposit = refundDeposit(req.params.id, req.body);
+    res.json({ code: 200, message: '退还成功', data: deposit });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.get('/api/service-fees/statistics', (req, res) => {
+  const stats = getServiceFeeStatistics();
+  res.json({ code: 200, message: 'success', data: stats });
+});
+
+app.get('/api/service-fees', (req, res) => {
+  const { page = 1, pageSize = 10, status, keyword, period } = req.query;
+  const result = getServiceFeeList({ page: parseInt(page), pageSize: parseInt(pageSize), status, keyword, period });
+  res.json({ code: 200, message: 'success', data: result });
+});
+
+app.get('/api/service-fees/:id', (req, res) => {
+  const fee = getServiceFeeById(req.params.id);
+  if (!fee) return res.status(404).json({ code: 404, message: '服务费记录不存在', data: null });
+  res.json({ code: 200, message: 'success', data: fee });
+});
+
+app.post('/api/service-fees', (req, res) => {
+  try {
+    const fee = createServiceFee(req.body);
+    res.json({ code: 200, message: '添加成功', data: fee });
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message, data: null });
+  }
+});
+
+app.put('/api/service-fees/:id/pay', (req, res) => {
+  try {
+    const fee = payServiceFee(req.params.id, req.body);
+    res.json({ code: 200, message: '缴纳成功', data: fee });
   } catch (error) {
     res.status(400).json({ code: 400, message: error.message, data: null });
   }
